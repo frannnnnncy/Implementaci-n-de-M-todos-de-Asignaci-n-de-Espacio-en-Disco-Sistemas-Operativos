@@ -1,0 +1,27 @@
+﻿# Node modules
+node_modules/
+
+# Build output
+/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Lockfiles and package managers
+# keep package.json and pnpm-lock.yaml if present
+package-lock.json
+
+# Misc
+*.tgz
+

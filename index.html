@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador SO v5 — UNA Puno</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/simulator.css">
+</head>
+<body>
+
+<div id="tooltip"></div>
+
+<!-- ═══════════════════ WELCOME SCREEN ═══════════════════ -->
+<div id="welcome-screen">
+  <div class="wlc-logo">⚙</div>
+  <div>
+    <div class="wlc-title"> Simulador Sistemas operativos final </div>
+    <div class="wlc-sub">Simulador Unificado de Sistemas Operativos — v5.0</div>
+  </div>
+  <div class="wlc-uni">Universidad Nacional del Altiplano · Puno</div>
+
+  <div class="sim-type-grid">
+    <div class="sim-type-card" data-type="memory" onclick="launchSim('memory',this)">
+      <div class="stc-icon">🧠</div>
+      <div class="stc-name" style="color:var(--green)">Gestión de Memoria</div>
+      <div class="stc-desc">Simula asignación y liberación de RAM. Fragmentación interna y externa.</div>
+      <div class="stc-badge" style="background:var(--green-bg);color:var(--green);border:1px solid var(--green3)">FF · BF · WF · Buddy · Dinámica/Fija</div>
+    </div>
+    <div class="sim-type-card" data-type="cpu-exp" onclick="launchSim('cpu-exp',this)">
+      <div class="stc-icon">⚡</div>
+      <div class="stc-name" style="color:var(--blue)">CPU Expulsiva</div>
+      <div class="stc-desc">Planificación con desalojo. Diagrama de Gantt animado por pasos.</div>
+      <div class="stc-badge" style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue3)">SRT · Round Robin</div>
+    </div>
+    <div class="sim-type-card" data-type="cpu-noexp" onclick="launchSim('cpu-noexp',this)">
+      <div class="stc-icon">⏱</div>
+      <div class="stc-name" style="color:var(--amber)">CPU No Expulsiva</div>
+      <div class="stc-desc">Planificación sin desalojo. Cálculo TR y TE con trazas paso a paso.</div>
+      <div class="stc-badge" style="background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber3)">FCFS · SPN · PRIO · HRRN</div>
+    </div>
+    <div class="sim-type-card" data-type="compare" onclick="launchSim('compare',this)">
+      <div class="stc-icon">📊</div>
+      <div class="stc-name" style="color:var(--cyan)">Comparación Global</div>
+      <div class="stc-desc">Compara TR̄ y TĒ entre todas las políticas ejecutadas. Gráfico de barras.</div>
+      <div class="stc-badge" style="background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan2)">Todas las políticas</div>
+    </div>
+    <div class="sim-type-card" data-type="disk" onclick="launchSim('disk',this)">
+      <div class="stc-icon">💽</div>
+      <div class="stc-name" style="color:var(--purple)">Asignación de Disco</div>
+      <div class="stc-desc">Simula la asignación de bloques a archivos en el disco y visualiza el mapa resultante.</div>
+      <div class="stc-badge" style="background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple2)">Contigua · Enlazada · Indexada</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div id="app-header" style="display:none">
+  <div class="hdr-top">
+    <div class="hdr-brand">
+      <div class="hdr-icon">⚙</div>
+      <div>
+        <div class="hdr-name">SIS<span>‑215</span></div>
+        <div class="hdr-uni">Simulador SO · UNA Puno</div>
+      </div>
+    </div>
+    <!-- Live metric pills -->
+    <div class="hdr-metrics">
+      <div class="hm-pill cyan">
+        <div class="hm-pill-icon">🔖</div>
+        <div>
+          <div class="hm-pill-label">Simulación activa</div>
+          <div class="hm-pill-val" id="hm-simname">—</div>
+        </div>
+      </div>
+      <!-- RAM bar pill -->
+      <div class="hm-pill-bar">
+        <div class="hm-pill-icon" style="background:var(--green-bg);border:1px solid var(--green3);border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center">💾</div>
+        <div class="hm-bar-wrap">
+          <div class="hm-pill-label">Uso RAM <span id="hm-ram-pct" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+          <div class="hm-bar-track"><div class="hm-bar-fill" id="hm-ram-bar" style="background:var(--green);width:0%"></div></div>
+        </div>
+      </div>
+      <!-- CPU bar pill -->
+      <div class="hm-pill-bar">
+        <div class="hm-pill-icon" style="background:var(--blue-bg);border:1px solid var(--blue3);border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center">🖥</div>
+        <div class="hm-bar-wrap">
+          <div class="hm-pill-label">Uso CPU <span id="hm-cpu-pct" style="color:var(--blue);font-family:'JetBrains Mono',monospace">—</span></div>
+          <div class="hm-bar-track"><div class="hm-bar-fill" id="hm-cpu-bar" style="background:var(--blue);width:0%"></div></div>
+        </div>
+      </div>
+      <div class="hm-pill green">
+        <div class="hm-pill-icon">⏱</div>
+        <div>
+          <div class="hm-pill-label">Tiempo Retorno TR̄</div>
+          <div class="hm-pill-val" id="hm-tr">—</div>
+        </div>
+      </div>
+      <div class="hm-pill blue">
+        <div class="hm-pill-icon">⌚</div>
+        <div>
+          <div class="hm-pill-label">Tiempo Espera TĒ</div>
+          <div class="hm-pill-val" id="hm-te">—</div>
+        </div>
+      </div>
+      <div class="hm-pill amber">
+        <div class="hm-pill-icon">📦</div>
+        <div>
+          <div class="hm-pill-label">Procesos activos</div>
+          <div class="hm-pill-val" id="hm-procs">—</div>
+        </div>
+      </div>
+      <div class="hm-pill purple">
+        <div class="hm-pill-icon">🔀</div>
+        <div>
+          <div class="hm-pill-label">Frag. Externa</div>
+          <div class="hm-pill-val" id="hm-efrag">—</div>
+        </div>
+      </div>
+    </div>
+    <!-- Sim type + actions -->
+    <div class="hdr-simtype">
+      <span class="simtype-label">Tipo de simulación</span>
+      <span class="simtype-badge mem" id="hdr-simtype-badge">MEMORIA</span>
+      <div class="hdr-actions">
+        <button class="btn sm" onclick="toggleDarkLight()" id="theme-btn">☀ Claro</button>
+        <button class="btn sm" onclick="exportReport()">📄 Exportar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORMULA STRIP -->
+  <div class="hdr-bottom">
+    <div class="field-ref"><span class="fr-key" style="color:#94a3b8">TL</span><span class="fr-eq">Tiempo de Llegada</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--purple)">Ts</span><span class="fr-eq">Ráfaga de CPU</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--green)">TF</span><span class="fr-eq">Tiempo de Finalización</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--amber)">TR</span><span class="fr-eq"><strong>TR = TF − TL</strong> · Retorno</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--blue)">TE</span><span class="fr-eq"><strong>TE = TR − Ts</strong> · Espera</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--red)">EF</span><span class="fr-eq">Frag. Externa = Σ huecos libres</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--pink)">IF</span><span class="fr-eq">Frag. Interna = bloque − proceso</span></div>
+    <div class="field-ref"><span class="fr-key" style="color:var(--cyan)">HRRN</span><span class="fr-eq">Ratio = <strong>(TE + Ts) / Ts</strong></span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODULE NAV ═══════════════════ -->
+<div id="module-nav" style="display:none">
+  <button class="mod-home-btn" onclick="goHome()" title="Volver a la pantalla principal"><span class="home-icon">🏠</span><span class="home-text"><span class="home-main">← Inicio</span><span class="home-sub">Cambiar módulo</span></span></button>
+  <button class="mod-tab mem-tab active" id="modtab-memory" onclick="switchModule('memory',this,'MEMORIA','mem')">
+    <span class="tab-ico">🧠</span><span>Gestión de Memoria</span>
+    <span class="tab-cnt">FF / BF / WF / Buddy</span>
+  </button>
+  <button class="mod-tab cpuexp-tab" id="modtab-cpu-exp" onclick="switchModule('cpu-exp',this,'CPU EXPULSIVA','cpu-exp')">
+    <span class="tab-ico">⚡</span><span>CPU Expulsiva</span>
+    <span class="tab-cnt">SRT / RR</span>
+  </button>
+  <button class="mod-tab cpunoexp-tab" id="modtab-cpu-noexp" onclick="switchModule('cpu-noexp',this,'CPU NO EXPULSIVA','cpu-noexp')">
+    <span class="tab-ico">⏱</span><span>CPU No Expulsiva</span>
+    <span class="tab-cnt">FCFS / SPN / PRIO / HRRN</span>
+  </button>
+  <button class="mod-tab cmp-tab" id="modtab-compare" onclick="switchModule('compare',this,'COMPARACIÓN','compare')">
+    <span class="tab-ico">📊</span><span>Comparación</span>
+  </button>
+  <button class="mod-tab disk-tab" id="modtab-disk" onclick="switchModule('disk',this,'ASIGNACIÓN DE DISCO','disk')">
+    <span class="tab-ico">💽</span><span>Asignación de Disco</span>
+    <span class="tab-cnt">Contigua / Enlazada / Indexada</span>
+  </button>
+</div>
+
+<!-- ═══════════════════ APP BODY ═══════════════════ -->
+<div id="app-body" style="display:none">
+
+<!-- ══════ MODULE 1: MEMORIA ══════ -->
+<div class="module-panel active" id="mod-memory">
+<div class="mod-layout">
+  <!-- SIDEBAR -->
+  <div class="mod-sidebar">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--green)"></span><span class="panel-title">Algoritmo de Asignación</span></div>
+      <div class="algo-grid">
+        <div class="algo-card selected" id="algo-FF" onclick="mem.selectAlgo('FF',this)">
+          <div class="algo-name">1° Ajuste</div><div class="algo-desc">Primer hueco suficiente. Rápido.</div>
+        </div>
+        <div class="algo-card" id="algo-BF" onclick="mem.selectAlgo('BF',this)">
+          <div class="algo-name">Mejor Ajuste</div><div class="algo-desc">Hueco más pequeño. Min. desperdicio.</div>
+        </div>
+        <div class="algo-card" id="algo-WF" onclick="mem.selectAlgo('WF',this)">
+          <div class="algo-name">Peor Ajuste</div><div class="algo-desc">Hueco más grande. Restos reusables.</div>
+        </div>
+        <div class="algo-card" id="algo-BD" onclick="mem.selectAlgo('BD',this)">
+          <div class="algo-name">Los Gemelos</div><div class="algo-desc">Buddy System. Potencias de 2.</div>
+        </div>
+      </div>
+      <div class="buddy-info" id="buddy-info">
+        <strong style="color:var(--green)">Buddy System:</strong> Divide RAM en potencias de 2. Cada bloque tiene un «gemelo»; al liberarse se fusionan automáticamente.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--amber)"></span><span class="panel-title">Configuración RAM</span></div>
+      <div class="field-row">
+        <div><label class="lbl">RAM Total (KB)</label><input type="number" id="mem-ram" value="4096" min="256" max="131072" step="256"></div>
+        <div><label class="lbl">S.O. (KB)</label><input type="number" id="mem-os" value="128" min="0" max="2048" step="16"></div>
+      </div>
+      <div class="field">
+        <label class="lbl">Tipo de Memoria</label>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="mode-dyn" onclick="mem.setMode('dynamic',this)">Dinámica</button>
+          <button class="mode-btn" id="mode-fix" onclick="mem.setMode('fixed',this)">Estática / Fija</button>
+        </div>
+      </div>
+      <div id="fixed-field" style="display:none">
+        <label class="lbl">Particiones Fijas (KB, separadas por coma)</label>
+        <input type="text" id="fixed-parts" value="512,1024,2048,512">
+      </div>
+      <!-- RAM Usage visual indicator -->
+      <div style="margin-top:.5rem">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
+          <span>Uso actual de RAM</span>
+          <span id="mem-ram-label" style="color:var(--green);font-family:'JetBrains Mono',monospace">—</span>
+        </div>
+        <div class="mcard-bar"><div class="mcard-bar-fill" id="mem-ram-usage-bar" style="background:var(--green);width:0%"></div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:10px;color:var(--text3)">
+          <span>■ <span style="color:var(--blue)">S.O.</span></span>
+          <span>■ <span style="color:var(--green)">Procesos</span></span>
+          <span>■ <span style="color:var(--purple)">Frag.Int</span></span>
+          <span>■ <span style="color:var(--text3)">Libre</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-dot" style="background:var(--blue)"></span>
+        <span class="panel-title">Carga de Trabajo</span>
+        <span id="mem-proc-count" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
+      </div>
+      <div class="ptable-wrap">
+        <table class="ptable">
+          <thead><tr><th style="width:16px">#</th><th>ID</th><th>Llega</th><th>Ráfaga</th><th>Mem KB</th><th>Prior</th><th></th></tr></thead>
+          <tbody id="mem-proc-tbody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm" onclick="mem.addProcess()">+ Proceso</button>
+        <button class="btn sm" onclick="mem.loadDefault()">Ejemplo</button>
+        <button class="btn sm danger" onclick="mem.clearAll()">Limpiar</button>
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('mem-csv').click()">
+        📂 CSV (ID, Llegada, Ráfaga, Memoria, Prioridad)
+        <input type="file" id="mem-csv" accept=".csv,.txt" style="display:none" onchange="mem.loadCSV(this)">
+      </div>
+      <button class="btn primary" style="width:100%;padding:11px;font-size:14px;margin-top:4px" onclick="mem.run()">▶ Ejecutar Simulación</button>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="mod-main">
+    <!-- METRIC ROW -->
+    <div class="metric-row">
+      <div class="mcard cyan"><div class="mcard-lbl">Algoritmo</div><div class="mcard-val" id="m-algo" style="font-size:14px;color:var(--cyan)">—</div><div class="mcard-sub">Seleccionado</div></div>
+      <div class="mcard green">
+        <div class="mcard-lbl">Uso RAM</div>
+        <div class="mcard-val" id="m-usage" style="color:var(--green)">—</div>
+        <div class="mcard-bar"><div class="mcard-bar-fill" id="m-usage-bar" style="background:var(--green);width:0%"></div></div>
+        <div class="mcard-sub">% utilizado</div>
+      </div>
+      <div class="mcard amber"><div class="mcard-lbl">Frag. Externa</div><div class="mcard-val" id="m-efrag" style="color:var(--amber)">—</div><div class="mcard-sub">KB libres totales</div></div>
+      <div class="mcard purple"><div class="mcard-lbl">Frag. Interna</div><div class="mcard-val" id="m-ifrag" style="color:var(--purple)">—</div><div class="mcard-sub">KB desperdiciados</div></div>
+      <div class="mcard red"><div class="mcard-lbl">En Espera</div><div class="mcard-val" id="m-wait" style="color:var(--red)">0</div><div class="mcard-sub">Sin memoria</div></div>
+      <div class="mcard blue"><div class="mcard-lbl">Procesos</div><div class="mcard-val" id="m-procs" style="color:var(--blue)">0</div><div class="mcard-sub">Cargados</div></div>
+    </div>
+
+    <!-- RAM BAR -->
+    <div class="panel" style="padding:.75rem 1rem">
+      <div class="panel-hdr" style="margin-bottom:.55rem"><span class="panel-dot" style="background:var(--green)"></span><span class="panel-title">Distribución de RAM en tiempo real</span><span id="frag-pct" style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;font-size:13px"></span></div>
+      <div class="frag-bar" id="frag-bar">
+        <div id="fb-os" class="frag-seg" style="background:var(--blue);width:3%"></div>
+        <div id="fb-used" class="frag-seg" style="background:var(--green);width:0%"></div>
+        <div id="fb-ifrag" class="frag-seg" style="background:var(--purple);width:0%"></div>
+        <div id="fb-free" class="frag-seg" style="background:var(--surface4);width:97%"></div>
+      </div>
+      <div class="frag-legend">
+        <span>■ <span style="color:var(--blue)">S.O.</span></span>
+        <span>■ <span style="color:var(--green)">Usado</span></span>
+        <span>■ <span style="color:var(--purple)">Frag.Int.</span></span>
+        <span>■ <span style="color:var(--text3)">Libre</span></span>
+      </div>
+    </div>
+
+    <!-- RESULT PANEL -->
+    <div class="panel" id="mem-result-panel" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="time-ctrl">
+        <button class="btn sm" onclick="mem.stepTime(-1)">◀ Prev</button>
+        <span class="time-ctrl-t" id="mem-time-display">t = 0</span>
+        <button class="btn sm" onclick="mem.stepTime(1)">Next ▶</button>
+        <button class="btn sm" onclick="mem.toggleAnim()" id="mem-anim-btn">▶ Auto</button>
+        <input type="range" id="mem-time-slider" min="0" max="1" value="0" step="1"
+          style="flex:1;min-width:60px;accent-color:var(--green)" oninput="mem.sliderChange(this.value)">
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="mem.switchTab('ram',this)">🗂 RAM Visual</button>
+        <button class="tab-btn" onclick="mem.switchTab('particiones',this)">🏛 Particiones</button>
+        <button class="tab-btn" onclick="mem.switchTab('fragdiag',this)">📦 Fragmentación</button>
+        <button class="tab-btn" onclick="mem.switchTab('gantt',this)">📊 Gantt CPU</button>
+        <button class="tab-btn" onclick="mem.switchTab('table',this)">📋 Tabla</button>
+        <button class="tab-btn" onclick="mem.switchTab('log',this)">📝 Log</button>
+        <button class="tab-btn" onclick="mem.switchTab('buddy',this)">🌲 Buddy</button>
+      </div>
+
+      <div class="tab-panel active" id="mem-tab-ram">
+        <div class="empty-state" id="mem-empty-ram"><div class="es-icon">🧠</div><p>Ejecuta la simulación para ver el mapa de memoria</p></div>
+        <div class="gantt-wrap" style="max-height:480px"><canvas id="ramCanvas" style="display:none;width:100%" height="440"></canvas></div>
+        <div id="mem-legend" class="legend-wrap" style="margin-top:7px;display:none"></div>
+      </div>
+
+      <div class="tab-panel" id="mem-tab-particiones">
+        <div class="empty-state" id="mem-empty-particiones"><div class="es-icon">🏛</div><p>Ejecuta la simulación para ver Particiones Múltiples</p></div>
+        <div id="mem-particiones-content" style="display:none">
+          <div style="margin-bottom:7px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">
+            Instante: <span id="part-time-label" style="color:var(--green);font-weight:700">t = 0</span>
+            <span style="font-size:10px;margin-left:8px">← usa el control de tiempo de arriba</span>
+          </div>
+          <div class="gantt-wrap" style="max-height:540px"><canvas id="partCanvas" style="width:100%" height="520"></canvas></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="mem-tab-fragdiag">
+        <div class="empty-state" id="mem-empty-fragdiag"><div class="es-icon">📦</div><p>Ejecuta la simulación para ver el diagrama de fragmentación</p></div>
+        <div id="mem-fragdiag-content" style="display:none">
+          <div class="time-ctrl" style="margin-bottom:.7rem">
+            <button class="btn sm" onclick="mem.fragDiagStep(-1)">◀ Prev</button>
+            <span class="time-ctrl-t" id="fragdiag-time-label">t = 0</span>
+            <button class="btn sm" onclick="mem.fragDiagStep(1)">Next ▶</button>
+            <button class="btn sm" onclick="mem.fragDiagAuto()" id="fragdiag-btn-play">▶ Auto</button>
+            <input type="range" id="fragdiag-slider" min="0" max="1" value="0" step="1" style="flex:1;min-width:60px;accent-color:var(--green)" oninput="mem.fragDiagSlider(this.value)">
+          </div>
+          <div class="fragdiag-layout">
+            <div id="fragdiag-col"></div>
+            <div class="fragdiag-info">
+              <div class="panel" style="padding:.75rem .9rem;margin-bottom:.7rem">
+                <div class="panel-hdr" style="margin-bottom:.65rem"><span class="panel-dot" style="background:var(--purple)"></span><span class="panel-title">Tipos de Fragmentación</span></div>
+                <div class="frag-legend-row">
+                  <span class="fl-swatch" style="background:rgba(255,77,106,.3);border:1.5px solid var(--red)"></span>
+                  <div><div class="fl-name" style="color:var(--red)">Fragmentación Externa</div><div class="fl-desc">Huecos entre procesos. No hay bloque contiguo suficiente.</div></div>
+                </div>
+                <div class="frag-legend-row">
+                  <span class="fl-swatch" style="background:rgba(181,123,255,.3);border:1.5px solid var(--purple)"></span>
+                  <div><div class="fl-name" style="color:var(--purple)">Fragmentación Interna</div><div class="fl-desc">Espacio desperdiciado dentro de un bloque asignado.</div></div>
+                </div>
+                <div class="frag-legend-row">
+                  <span class="fl-swatch" style="background:rgba(77,159,255,.25);border:1.5px solid var(--blue)"></span>
+                  <div><div class="fl-name" style="color:var(--blue)">Sistema Operativo</div><div class="fl-desc">Zona reservada permanentemente.</div></div>
+                </div>
+              </div>
+              <div class="fragdiag-stats" id="fragdiag-stats"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="mem-tab-gantt">
+        <div class="empty-state" id="mem-empty-gantt"><div class="es-icon">📊</div><p>Ejecuta la simulación para ver el diagrama de Gantt</p></div>
+        <div id="mem-legend-gantt" class="legend-wrap" style="display:none"></div>
+        <div class="gantt-wrap" style="display:none;max-height:380px" id="mem-gantt-wrap"><canvas id="memGanttCanvas" height="320"></canvas></div>
+      </div>
+
+      <div class="tab-panel" id="mem-tab-table">
+        <div class="empty-state" id="mem-empty-table"><div class="es-icon">📋</div><p>Ejecuta la simulación para ver la tabla</p></div>
+        <div id="mem-tbl-content" style="display:none">
+          <div class="stat-cards" id="mem-stat-cards"></div>
+          <div class="rtable-wrap">
+            <table class="rtable">
+              <thead><tr><th>Proceso</th><th>Llegada</th><th>Ráfaga</th><th>Memoria</th><th>Prior.</th><th>Inicio</th><th>Fin</th><th style="color:var(--amber)">TR</th><th style="color:var(--blue)">TE</th><th>Frag.Int.</th><th>Estado</th></tr></thead>
+              <tbody id="mem-sum-tbody"></tbody>
+              <tfoot id="mem-sum-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="mem-tab-log">
+        <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn sm" onclick="document.getElementById('mem-log-box').scrollTop=0">↑ Inicio</button>
+          <button class="btn sm" onclick="document.getElementById('mem-log-box').scrollTop=9999">↓ Final</button>
+          <button class="btn sm" onclick="mem.copyLog()">📋 Copiar</button>
+          <button class="btn sm" onclick="mem.downloadLog()">⬇ Descargar</button>
+        </div>
+        <div class="log-box" id="mem-log-box"><div class="log-line" style="color:var(--text3)">Ejecuta la simulación para ver el log...</div></div>
+      </div>
+
+      <div class="tab-panel" id="mem-tab-buddy">
+        <div class="empty-state" id="mem-empty-buddy"><div class="es-icon">🌲</div><p>Selecciona "Los Gemelos" y ejecuta para ver el árbol Buddy</p></div>
+        <div class="gantt-wrap" style="max-height:240px"><canvas id="buddyCanvas" style="display:none;width:100%" height="210"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /mod-memory -->
+
+<!-- ══════ MODULE 2: CPU EXPULSIVA ══════ -->
+<div class="module-panel" id="mod-cpu-exp">
+<div class="mod-layout">
+  <div class="mod-sidebar">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--blue)"></span><span class="panel-title">Política Expulsiva</span></div>
+      <div class="policy-grid">
+        <div class="policy-card selected" id="exp-SRT" onclick="cpuExp.selectPolicy('SRT',this)">
+          <div class="policy-name">SRT</div><div class="policy-desc">Shortest Remaining Time. Expulsa si llega proceso con menor tiempo restante.</div>
+        </div>
+        <div class="policy-card" id="exp-RR" onclick="cpuExp.selectPolicy('RR',this)">
+          <div class="policy-name">Round Robin</div><div class="policy-desc">Quantum fijo. Rotación equitativa.</div>
+        </div>
+      </div>
+      <div id="exp-quantum-field" style="display:none;margin-top:.4rem">
+        <label class="lbl">Quantum (q)</label>
+        <input type="number" id="exp-quantum" value="2" min="1" max="99">
+      </div>
+      <div class="info-box show" id="exp-algo-info">
+        <strong style="color:var(--blue)">SRT</strong> — En cada tick, si hay un proceso con menor tiempo restante, lo expulsa. Minimiza tiempo de espera promedio.
+      </div>
+    </div>
+    <!-- Scheduler state visualizer -->
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--cyan)"></span><span class="panel-title">Estado del Planificador</span></div>
+      <div id="exp-sch-states">
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:.5rem">Ejecuta la simulación para ver estados</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--cyan)"></span><span class="panel-title">Carga de Trabajo <span id="exp-proc-count" style="font-weight:400;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-transform:none;letter-spacing:0"></span></span></div>
+      <div class="ptable-wrap">
+        <table class="ptable"><thead><tr><th></th><th>ID</th><th>Llegada</th><th>Ráfaga</th><th></th></tr></thead><tbody id="exp-proc-tbody"></tbody></table>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm" onclick="cpuExp.addProcess()">+ Proceso</button>
+        <button class="btn sm" onclick="cpuExp.loadDefault()">Ejemplo</button>
+        <button class="btn sm danger" onclick="cpuExp.clearAll()">Limpiar</button>
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('exp-csv').click()">
+        📂 CSV (ID, T.Llegada, T.Servicio)
+        <input type="file" id="exp-csv" accept=".csv,.txt" style="display:none" onchange="cpuExp.loadCSV(this)">
+      </div>
+      <button class="btn primary-blue" style="width:100%;padding:11px;font-size:14px;margin-top:4px" onclick="cpuExp.run()">▶ Ejecutar Simulación</button>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--purple)"></span><span class="panel-title">Fórmulas</span></div>
+      <div class="formula-row"><div class="formula-key" style="color:var(--amber)">TR</div><div class="formula-eq"><span>TR = TF − TL</span> · Retorno</div></div>
+      <div class="formula-row"><div class="formula-key" style="color:var(--blue)">TE</div><div class="formula-eq"><span>TE = TR − Ts</span> · Espera</div></div>
+      <div class="formula-row"><div class="formula-key" style="color:var(--green)">Avg</div><div class="formula-eq"><span>Σ / #procesos</span></div></div>
+    </div>
+  </div>
+  <div class="mod-main">
+    <div class="metric-row">
+      <div class="mcard blue"><div class="mcard-lbl">Política</div><div class="mcard-val" id="exp-m-policy" style="font-size:14px;color:var(--blue)">—</div><div class="mcard-sub">Expulsiva</div></div>
+      <div class="mcard cyan"><div class="mcard-lbl">Procesos</div><div class="mcard-val" id="exp-m-n" style="color:var(--cyan)">0</div><div class="mcard-sub">Total</div></div>
+      <div class="mcard amber"><div class="mcard-lbl">TR̄ Promedio</div><div class="mcard-val" id="exp-m-tr" style="color:var(--amber)">—</div><div class="mcard-sub">Tiempo Retorno</div></div>
+      <div class="mcard blue"><div class="mcard-lbl">TĒ Promedio</div><div class="mcard-val" id="exp-m-te" style="color:var(--blue)">—</div><div class="mcard-sub">Tiempo Espera</div></div>
+      <div class="mcard green"><div class="mcard-lbl">T. Total CPU</div><div class="mcard-val" id="exp-m-total" style="color:var(--green)">—</div><div class="mcard-sub">ticks</div></div>
+      <div class="mcard purple">
+        <div class="mcard-lbl">Uso CPU</div>
+        <div class="mcard-val" id="exp-m-util" style="color:var(--purple)">—</div>
+        <div class="mcard-bar"><div class="mcard-bar-fill" id="exp-cpu-bar" style="background:var(--purple);width:0%"></div></div>
+        <div class="mcard-sub">% activo</div>
+      </div>
+    </div>
+    <div class="panel" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="empty-state" id="exp-empty-state"><div class="es-icon">⚡</div><p>Configura los procesos y presiona <strong>Ejecutar</strong></p></div>
+      <div id="exp-result-content" style="display:none;flex:1;flex-direction:column">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="cpuExp.switchTab('gantt',this)">📊 Gantt</button>
+          <button class="tab-btn" onclick="cpuExp.switchTab('states',this)">🔄 Estados</button>
+          <button class="tab-btn" onclick="cpuExp.switchTab('table',this)">📋 Tabla</button>
+          <button class="tab-btn" onclick="cpuExp.switchTab('steps',this)">📝 Traza</button>
+        </div>
+        <div class="tab-panel active" id="exp-tab-gantt">
+          <div class="legend-wrap" id="exp-legend"></div>
+          <div class="time-ctrl">
+            <button class="btn sm" id="exp-btn-prev" onclick="cpuExp.ganttStep(-1)" disabled>◀ Prev</button>
+            <button class="btn sm" id="exp-btn-next" onclick="cpuExp.ganttStep(1)">Next ▶</button>
+            <button class="btn sm" id="exp-btn-play" onclick="cpuExp.ganttPlay()">▶ Auto</button>
+            <button class="btn sm" onclick="cpuExp.ganttReset()">↺ Reset</button>
+            <span id="exp-step-indicator" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3)">Paso 0</span>
+            <select id="exp-speed" style="height:30px;width:auto;font-size:12px">
+              <option value="800">Lento</option><option value="450" selected>Normal</option><option value="180">Rápido</option>
+            </select>
+          </div>
+          <div class="gantt-wrap" id="exp-gantt-wrap" style="overflow-x:auto"><canvas id="expGanttCanvas"></canvas></div>
+        </div>
+        <div class="tab-panel" id="exp-tab-states">
+          <div id="exp-states-timeline" style="padding:.5rem 0"></div>
+        </div>
+        <div class="tab-panel" id="exp-tab-table">
+          <div class="stat-cards" id="exp-stat-cards"></div>
+          <div class="rtable-wrap">
+            <table class="rtable">
+              <thead><tr><th>Proceso</th><th>TL</th><th>Ts</th><th>TF</th><th style="color:var(--amber)">TR</th><th style="color:var(--blue)">TE</th></tr></thead>
+              <tbody id="exp-sum-tbody"></tbody><tfoot id="exp-sum-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="tab-panel" id="exp-tab-steps"><div class="step-trace" id="exp-steps-panel"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /mod-cpu-exp -->
+
+<!-- ══════ MODULE 3: CPU NO EXPULSIVA ══════ -->
+<div class="module-panel" id="mod-cpu-noexp">
+<div class="mod-layout">
+  <div class="mod-sidebar">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--amber)"></span><span class="panel-title">Política No Expulsiva</span></div>
+      <div class="policy-grid">
+        <div class="policy-card noexp selected" id="noexp-FCFS" onclick="cpuNoExp.selectPolicy('FCFS',this)">
+          <div class="policy-name">FCFS</div><div class="policy-desc">First Come, First Served. Orden de llegada.</div>
+        </div>
+        <div class="policy-card noexp" id="noexp-SPN" onclick="cpuNoExp.selectPolicy('SPN',this)">
+          <div class="policy-name">SPN / SJF</div><div class="policy-desc">Shorter Process Next. Menor Ts primero.</div>
+        </div>
+        <div class="policy-card noexp" id="noexp-PRIO" onclick="cpuNoExp.selectPolicy('PRIO',this)">
+          <div class="policy-name">Prioridad</div><div class="policy-desc">Non-preemptive. Menor número = mayor prio.</div>
+        </div>
+        <div class="policy-card noexp" id="noexp-HRRN" onclick="cpuNoExp.selectPolicy('HRRN',this)">
+          <div class="policy-name">HRRN</div><div class="policy-desc">Highest Response Ratio. Evita inanición.</div>
+        </div>
+      </div>
+      <div class="info-box show amber-box" id="noexp-algo-info">
+        <strong style="color:var(--amber)">FCFS</strong> — Orden estricto de llegada. Sin desalojo.
+      </div>
+    </div>
+    <!-- Scheduler state visualizer -->
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--cyan)"></span><span class="panel-title">Estado del Planificador</span></div>
+      <div id="noexp-sch-states">
+        <div style="font-size:11px;color:var(--text3);text-align:center;padding:.5rem">Ejecuta la simulación para ver estados</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--cyan)"></span><span class="panel-title">Carga de Trabajo <span id="noexp-proc-count" style="font-weight:400;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-transform:none;letter-spacing:0"></span></span></div>
+      <div class="ptable-wrap">
+        <table class="ptable"><thead><tr><th></th><th>ID</th><th>Llegada</th><th>Ráfaga</th><th>Prior.</th><th></th></tr></thead><tbody id="noexp-proc-tbody"></tbody></table>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm" onclick="cpuNoExp.addProcess()">+ Proceso</button>
+        <button class="btn sm" onclick="cpuNoExp.loadDefault()">Ejemplo</button>
+        <button class="btn sm danger" onclick="cpuNoExp.clearAll()">Limpiar</button>
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('noexp-csv').click()">
+        📂 CSV (ID, Llegada, Ráfaga, Prioridad)
+        <input type="file" id="noexp-csv" accept=".csv,.txt" style="display:none" onchange="cpuNoExp.loadCSV(this)">
+      </div>
+      <button class="btn primary-amber" style="width:100%;padding:11px;font-size:14px;margin-top:4px" onclick="cpuNoExp.run()">▶ Ejecutar Simulación</button>
+    </div>
+  </div>
+  <div class="mod-main">
+    <div class="metric-row">
+      <div class="mcard amber"><div class="mcard-lbl">Política</div><div class="mcard-val" id="noexp-m-policy" style="font-size:14px;color:var(--amber)">—</div><div class="mcard-sub">No Expulsiva</div></div>
+      <div class="mcard cyan"><div class="mcard-lbl">Procesos</div><div class="mcard-val" id="noexp-m-n" style="color:var(--cyan)">0</div><div class="mcard-sub">Total</div></div>
+      <div class="mcard amber"><div class="mcard-lbl">TR̄ Promedio</div><div class="mcard-val" id="noexp-m-tr" style="color:var(--amber)">—</div><div class="mcard-sub">Tiempo Retorno</div></div>
+      <div class="mcard blue"><div class="mcard-lbl">TĒ Promedio</div><div class="mcard-val" id="noexp-m-te" style="color:var(--blue)">—</div><div class="mcard-sub">Tiempo Espera</div></div>
+      <div class="mcard green"><div class="mcard-lbl">T. Total</div><div class="mcard-val" id="noexp-m-total" style="color:var(--green)">—</div><div class="mcard-sub">ticks</div></div>
+      <div class="mcard purple">
+        <div class="mcard-lbl">Uso CPU</div>
+        <div class="mcard-val" id="noexp-m-util" style="color:var(--purple)">—</div>
+        <div class="mcard-bar"><div class="mcard-bar-fill" id="noexp-cpu-bar" style="background:var(--purple);width:0%"></div></div>
+        <div class="mcard-sub">% activo</div>
+      </div>
+    </div>
+    <div class="panel" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="empty-state" id="noexp-empty-state"><div class="es-icon">⏱</div><p>Configura los procesos y presiona <strong>Ejecutar</strong></p></div>
+      <div id="noexp-result-content" style="display:none;flex-direction:column">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="cpuNoExp.switchTab('gantt',this)">📊 Gantt</button>
+          <button class="tab-btn" onclick="cpuNoExp.switchTab('states',this)">🔄 Estados</button>
+          <button class="tab-btn" onclick="cpuNoExp.switchTab('table',this)">📋 Tabla</button>
+          <button class="tab-btn" onclick="cpuNoExp.switchTab('steps',this)">📝 Paso a paso</button>
+        </div>
+        <div class="tab-panel active" id="noexp-tab-gantt">
+          <div class="legend-wrap" id="noexp-legend"></div>
+          <div class="time-ctrl">
+            <button class="btn sm" id="noexp-btn-prev" onclick="cpuNoExp.ganttStep(-1)" disabled>◀ Prev</button>
+            <button class="btn sm" id="noexp-btn-next" onclick="cpuNoExp.ganttStep(1)">Next ▶</button>
+            <button class="btn sm" id="noexp-btn-play" onclick="cpuNoExp.ganttPlay()">▶ Auto</button>
+            <button class="btn sm" onclick="cpuNoExp.ganttReset()">↺ Reset</button>
+            <span id="noexp-step-indicator" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3)">Paso 0</span>
+            <select id="noexp-speed" style="height:30px;width:auto;font-size:12px">
+              <option value="800">Lento</option><option value="450" selected>Normal</option><option value="180">Rápido</option>
+            </select>
+          </div>
+          <div class="gantt-wrap" id="noexp-gantt-wrap" style="overflow-x:auto"><canvas id="noexpGanttCanvas"></canvas></div>
+        </div>
+        <div class="tab-panel" id="noexp-tab-states">
+          <div id="noexp-states-timeline" style="padding:.5rem 0"></div>
+        </div>
+        <div class="tab-panel" id="noexp-tab-table">
+          <div class="stat-cards" id="noexp-stat-cards"></div>
+          <div class="rtable-wrap">
+            <table class="rtable">
+              <thead><tr><th>Proceso</th><th>TL</th><th>Ts</th><th>Prior.</th><th>TF</th><th style="color:var(--amber)">TR</th><th style="color:var(--blue)">TE</th></tr></thead>
+              <tbody id="noexp-sum-tbody"></tbody><tfoot id="noexp-sum-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="tab-panel" id="noexp-tab-steps"><div id="noexp-steps-panel" class="log-box"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /mod-cpu-noexp -->
+
+<!-- ══════ MODULE 4: COMPARACIÓN ══════ -->
+<div class="module-panel" id="mod-compare">
+<div class="mod-layout">
+  <div class="mod-sidebar">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--cyan)"></span><span class="panel-title">Comparación Global</span></div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:.9rem">Ejecuta simulaciones en los otros módulos para comparar TR̄ y TĒ entre políticas.</p>
+      <button class="btn primary" style="width:100%;padding:10px" onclick="compare.refresh()">🔄 Actualizar</button>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--amber)"></span><span class="panel-title">Leyenda métricas</span></div>
+      <div class="formula-row"><div class="formula-key" style="color:var(--amber)">TR̄</div><div class="formula-eq">Tiempo Retorno promedio</div></div>
+      <div class="formula-row"><div class="formula-key" style="color:var(--blue)">TĒ</div><div class="formula-eq">Tiempo Espera promedio</div></div>
+      <div class="formula-row"><div class="formula-key" style="color:var(--cyan)">N</div><div class="formula-eq">Número de procesos</div></div>
+    </div>
+  </div>
+  <div class="mod-main">
+    <div id="compare-grid" class="compare-grid"></div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--amber)"></span><span class="panel-title">Comparativa Visual — TR̄ y TĒ por Política</span></div>
+      <div class="gantt-wrap" style="overflow-x:auto"><canvas id="compareCanvas" height="320" style="width:100%"></canvas></div>
+    </div>
+  </div>
+</div>
+</div><!-- /mod-compare -->
+
+<!-- ══════ MODULE 5: ASIGNACIÓN DE DISCO ══════ -->
+<div class="module-panel" id="mod-disk">
+<div class="mod-layout">
+  <!-- SIDEBAR -->
+  <div class="mod-sidebar">
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--purple)"></span><span class="panel-title">Método de Asignación</span></div>
+      <div class="algo-grid" style="grid-template-columns:1fr">
+        <div class="algo-card selected" id="dalgo-contig" onclick="disk.selectMethod('contig',this)">
+          <div class="algo-name">Contigua</div><div class="algo-desc">Bloques consecutivos. Rápida, pero genera fragmentación externa.</div>
+        </div>
+        <div class="algo-card" id="dalgo-linked" onclick="disk.selectMethod('linked',this)">
+          <div class="algo-name">Enlazada</div><div class="algo-desc">Cada bloque apunta al siguiente. Sin fragmentación externa, acceso secuencial.</div>
+        </div>
+        <div class="algo-card" id="dalgo-indexed" onclick="disk.selectMethod('indexed',this)">
+          <div class="algo-name">Indexada</div><div class="algo-desc">Un bloque índice guarda punteros a los bloques de datos. Acceso directo.</div>
+        </div>
+      </div>
+      <div class="info-box show" id="disk-algo-info" style="border-left-color:var(--purple)">
+        <strong style="color:var(--purple)">Contigua</strong> — Cada archivo ocupa un rango de bloques consecutivos. Se asigna por Primer Ajuste sobre los huecos libres. Fácil de leer secuencialmente, pero con el tiempo aparecen huecos (fragmentación externa) que impiden ubicar archivos grandes.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr"><span class="panel-dot" style="background:var(--amber)"></span><span class="panel-title">Configuración del Disco</span></div>
+      <div class="field-row">
+        <div><label class="lbl">Bloques totales</label><input type="number" id="disk-total-blocks" value="40" min="8" max="400" step="1"></div>
+        <div><label class="lbl">Tamaño bloque (KB)</label><input type="number" id="disk-block-size" value="4" min="1" max="256" step="1"></div>
+      </div>
+      <div style="margin-top:.5rem">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
+          <span>Uso actual de disco</span>
+          <span id="disk-usage-label" style="color:var(--purple);font-family:'JetBrains Mono',monospace">—</span>
+        </div>
+        <div class="mcard-bar"><div class="mcard-bar-fill" id="disk-usage-bar" style="background:var(--purple);width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-dot" style="background:var(--blue)"></span>
+        <span class="panel-title">Archivos a Asignar</span>
+        <span id="disk-file-count" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
+      </div>
+      <div class="ptable-wrap">
+        <table class="ptable">
+          <thead><tr><th style="width:16px">#</th><th>Nombre</th><th>Bloques</th><th></th></tr></thead>
+          <tbody id="disk-file-tbody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm" onclick="disk.addFile()">+ Archivo</button>
+        <button class="btn sm" onclick="disk.loadDefault()">Ejemplo</button>
+        <button class="btn sm danger" onclick="disk.clearAll()">Limpiar</button>
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('disk-csv').click()">
+        📂 CSV (Nombre, Bloques)
+        <input type="file" id="disk-csv" accept=".csv,.txt" style="display:none" onchange="disk.loadCSV(this)">
+      </div>
+      <button class="btn primary" style="width:100%;padding:11px;font-size:14px;margin-top:4px;background:var(--purple);border-color:var(--purple2)" onclick="disk.run()">▶ Ejecutar Simulación</button>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="mod-main">
+    <div class="metric-row">
+      <div class="mcard purple"><div class="mcard-lbl">Método</div><div class="mcard-val" id="d-m-method" style="font-size:14px;color:var(--purple)">—</div><div class="mcard-sub">Seleccionado</div></div>
+      <div class="mcard green">
+        <div class="mcard-lbl">Uso de Disco</div>
+        <div class="mcard-val" id="d-m-usage" style="color:var(--green)">—</div>
+        <div class="mcard-bar"><div class="mcard-bar-fill" id="d-m-usage-bar" style="background:var(--green);width:0%"></div></div>
+        <div class="mcard-sub">% ocupado</div>
+      </div>
+      <div class="mcard amber"><div class="mcard-lbl">Bloques Libres</div><div class="mcard-val" id="d-m-free" style="color:var(--amber)">—</div><div class="mcard-sub">de bloques totales</div></div>
+      <div class="mcard red"><div class="mcard-lbl">Frag. Externa</div><div class="mcard-val" id="d-m-holes" style="color:var(--red)">—</div><div class="mcard-sub">huecos libres (solo contigua)</div></div>
+      <div class="mcard blue"><div class="mcard-lbl">Archivos Asignados</div><div class="mcard-val" id="d-m-ok" style="color:var(--blue)">0</div><div class="mcard-sub">de archivos totales</div></div>
+      <div class="mcard cyan"><div class="mcard-lbl">Overhead</div><div class="mcard-val" id="d-m-overhead" style="color:var(--cyan)">—</div><div class="mcard-sub">bloques de control</div></div>
+    </div>
+
+    <div class="panel" id="disk-result-panel" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="empty-state" id="disk-empty-state"><div class="es-icon">💽</div><p>Configura los archivos y presiona <strong>Ejecutar Simulación</strong></p></div>
+      <div id="disk-result-content" style="display:none;flex-direction:column;min-height:0;flex:1">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="disk.switchTab('map',this)">💽 Mapa de Disco</button>
+          <button class="tab-btn" onclick="disk.switchTab('table',this)">📋 Tabla de Asignación</button>
+          <button class="tab-btn" onclick="disk.switchTab('detail',this)">🔎 Detalle del Método</button>
+          <button class="tab-btn" onclick="disk.switchTab('log',this)">📝 Traza / Log</button>
+        </div>
+
+        <div class="tab-panel active" id="disk-tab-map" style="overflow-y:auto">
+          <div class="disk-grid" id="disk-grid"></div>
+          <div id="disk-legend" class="legend-wrap disk-legend-scroll" style="margin-top:10px"></div>
+        </div>
+
+        <div class="tab-panel" id="disk-tab-table" style="overflow-y:auto">
+          <div class="rtable-wrap">
+            <table class="rtable">
+              <thead><tr><th>Archivo</th><th>Bloques</th><th>KB</th><th>Ubicación</th><th>Estado</th></tr></thead>
+              <tbody id="disk-sum-tbody"></tbody>
+              <tfoot id="disk-sum-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="disk-tab-detail" style="overflow-y:auto">
+          <div id="disk-detail-content"></div>
+        </div>
+
+        <div class="tab-panel" id="disk-tab-log">
+          <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+            <button class="btn sm" onclick="document.getElementById('disk-log-box').scrollTop=0">↑ Inicio</button>
+            <button class="btn sm" onclick="document.getElementById('disk-log-box').scrollTop=9999">↓ Final</button>
+            <button class="btn sm" onclick="disk.copyLog()">📋 Copiar</button>
+            <button class="btn sm" onclick="disk.downloadLog()">⬇ Descargar</button>
+          </div>
+          <div class="log-box" id="disk-log-box"><div class="log-line" style="color:var(--text3)">Ejecuta la simulación para ver el log...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /mod-disk -->
+
+</div><!-- /app-body -->
+
+<script type="module" src="/src/simulator.js"></script>
+</body>
+</html>
+
